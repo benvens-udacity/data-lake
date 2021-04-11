@@ -23,7 +23,7 @@ def create_spark_session():
 
 def process_song_data(spark, input_data, output_data):
     # get filepath to song data file
-    song_data = 's3://udacity-dend/song_data/*/*/*/*.json'
+    song_data = input_data + 'song_data/*/*/*/*.json'
     
     # read song data file
     df = spark.read.schema('''
@@ -43,7 +43,7 @@ def process_song_data(spark, input_data, output_data):
     songs_table = df.select('song_id', 'title', 'artist_id', 'year', 'duration')
     
     # write songs table to parquet files partitioned by year and artist
-    songs_table.write.mode('overwrite').partitionBy('year', 'artist_id').parquet('s3n://data-lake-cluster/dimensions.parquet/songs')
+    songs_table.write.mode('overwrite').partitionBy('year', 'artist_id').parquet(output_data + 'dimensions.parquet/songs')
 
     # extract columns to create artists table
     artists_table = df.selectExpr('artist_id',
@@ -53,12 +53,12 @@ def process_song_data(spark, input_data, output_data):
                                   'artist_longitude as longitude')
     
     # write artists table to parquet files
-    artists_table.write.mode('overwrite').parquet('s3n://data-lake-cluster/dimensions.parquet/artists')
+    artists_table.write.mode('overwrite').parquet(output_data + 'dimensions.parquet/artists')
 
 
 def process_log_data(spark, input_data, output_data):
     # get filepath to log data file
-    log_data = 's3://udacity-dend/log_data/*/*/*-events.json'
+    log_data = input_data + 'log_data/*/*/*-events.json'
 
     # read log data file
     df = spark.read.schema('''
@@ -89,7 +89,7 @@ def process_log_data(spark, input_data, output_data):
     users_table = df.select('user_id', 'first_name', 'last_name', 'gender', 'level')
     
     # write users table to parquet files
-    users_table.write.parquet('s3n://data-lake-cluster/dimensions.parquet/users')
+    users_table.write.mode('overwrite').parquet(output_data + 'dimensions.parquet/users')
 
     # create timestamp column from original timestamp column
     df = df.withColumn('event_ts', (col('ts') / 1000).cast('timestamp'))
@@ -104,33 +104,52 @@ def process_log_data(spark, input_data, output_data):
                                'dayofweek(event_ts) as weekday')
 
     # write time table to parquet files partitioned by year and month
-    time_table.write.mode('overwrite').partitionBy('year', 'month').parquet('s3n://data-lake-cluster/dimensions.parquet/time')
+    time_table.write.mode('overwrite').partitionBy('year', 'month').parquet(output_data + 'dimensions.parquet/time')
 
     # read in song data to use for songplays table
-    song_df = spark.read.parquet('s3n://data-lake-cluster/dimensions.parquet/songs')
+    song_df = spark.read.parquet(output_data + 'dimensions.parquet/songs')
 
     # read in artist data to use for songplays table
-    artist_df = spark.read.parquet('s3n://data-lake-cluster/dimensions.parquet/artists')
+    artist_df = spark.read.parquet(output_data + 'dimensions.parquet/artists')
 
     # create SQL table views over the song and artist data frames
     song_df.registerTempTable("song")
     artist_df.registerTempTable("artist")
-    
+    df.registerTempTable("events")
+
     # extract columns from joined song and log datasets to create songplays table
-    songplays_table = 
+    songplays_table = spark.sql('''
+    SELECT DISTINCT
+        event_ts,
+        year(event_ts) as year,
+        month(event_ts) as month,
+        user_id, 
+        level, 
+        session_id,
+        ev.location, 
+        user_agent,
+        s.song_id,
+        a.artist_id
+    FROM    events AS ev,
+            song AS s,
+            artist AS a
+    WHERE   ev.song = s.title
+    AND     ev.artist = a.name
+    ''')
 
     # write songplays table to parquet files partitioned by year and month
-    songplays_table
+    songplays_table.write.mode('overwrite').partitionBy('year', 'month').parquet(output_data + 'dimensions.parquet/songplays')
 
 
 def main():
     spark = create_spark_session()
     input_data = "s3a://udacity-dend/"
-    output_data = ""
+    output_data = "s3n://data-lake-cluster/"
     
     process_song_data(spark, input_data, output_data)    
     process_log_data(spark, input_data, output_data)
 
+    spark.stop()
 
 if __name__ == "__main__":
     main()

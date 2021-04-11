@@ -129,4 +129,5 @@ dmypy.json
 .pyre/
 
 # Specific project exclusions
+.idea/
 /dl.cfg

@@ -92,25 +92,31 @@ def process_log_data(spark, input_data, output_data):
     users_table.write.parquet('s3n://data-lake-cluster/dimensions.parquet/users')
 
     # create timestamp column from original timestamp column
-    get_timestamp = udf(lambda t: t / 1000, TimestampType())
-    spark.udf.register("get_timestamp", get_timestamp)
+    df = df.withColumn('event_ts', (col('ts') / 1000).cast('timestamp'))
 
-    df = df.withColumn('event_ts', get_timestamp('ts'))
-    
-    # create datetime column from original timestamp column
-    get_datetime = udf()
-    df = 
-    
     # extract columns to create time table
-    time_table = 
-    
+    time_table = df.selectExpr('event_ts as start_time',
+                               'hour(event_ts) as hour',
+                               'day(event_ts) as day',
+                               'weekofyear(event_ts) as week',
+                               'month(event_ts) as month',
+                               'year(event_ts) as year',
+                               'dayofweek(event_ts) as weekday')
+
     # write time table to parquet files partitioned by year and month
-    time_table
+    time_table.write.mode('overwrite').partitionBy('year', 'month').parquet('s3n://data-lake-cluster/dimensions.parquet/time')
 
     # read in song data to use for songplays table
-    song_df = 
+    song_df = spark.read.parquet('s3n://data-lake-cluster/dimensions.parquet/songs')
 
-    # extract columns from joined song and log datasets to create songplays table 
+    # read in artist data to use for songplays table
+    artist_df = spark.read.parquet('s3n://data-lake-cluster/dimensions.parquet/artists')
+
+    # create SQL table views over the song and artist data frames
+    song_df.registerTempTable("song")
+    artist_df.registerTempTable("artist")
+    
+    # extract columns from joined song and log datasets to create songplays table
     songplays_table = 
 
     # write songplays table to parquet files partitioned by year and month

@@ -172,6 +172,9 @@ def process_log_data(spark: SparkSession, input_data: str, output_data: str):
 
 
 def main():
+    """Main function, used to invoke data processing functions, and then stop Spark script processing.
+    """
+
     spark = create_spark_session()
     input_data = "s3a://udacity-dend/"
     output_data = "s3n://data-lake-cluster/"

@@ -1,10 +1,5 @@
-# import configparser
-from datetime import datetime
-import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, col
-from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, date_format
-from pyspark.sql.types import TimestampType
 
 # config = configparser.ConfigParser()
 # config.read('dl.cfg')
@@ -13,7 +8,13 @@ from pyspark.sql.types import TimestampType
 # os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS_SECRET_ACCESS_KEY']
 
 
-def create_spark_session():
+def create_spark_session() -> SparkSession:
+    """Create a Spark session, compatible with the AWS Elastic Map Reduce (EMR) service.
+
+    Returns:
+        a Spark session object, which connects the driver to the EMR cluster's master instance.
+    """
+
     spark = SparkSession \
         .builder \
         .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:2.7.0") \
@@ -21,7 +22,21 @@ def create_spark_session():
     return spark
 
 
-def process_song_data(spark, input_data, output_data):
+def process_song_data(spark: SparkSession, input_data: str, output_data: str) -> None:
+    """Process song data on the Spark cluster, using a cloud hosted file system such as HDFS or S3.
+
+    The data is read from the song file, and used to create the songs and artists dimension tables.
+
+    The tables are then written back to cloud storage using a columnar Parquet file format,
+    optionally with appropriate partitioning.
+
+    Args:
+       spark (SparkSession): a Spark session object connected to to the Spark cluster master node.
+       input_data (string): URL for input data, references cloud storage such as HDFS or S3.
+       output_data (string): URL for output data, references cloud storage such as HDFS or S3.
+
+    """
+
     # get filepath to song data file
     song_data = input_data + 'song_data/*/*/*/*.json'
     
@@ -56,7 +71,22 @@ def process_song_data(spark, input_data, output_data):
     artists_table.write.mode('overwrite').parquet(output_data + 'dimensions.parquet/artists')
 
 
-def process_log_data(spark, input_data, output_data):
+def process_log_data(spark: SparkSession, input_data: str, output_data: str):
+    """Process event log data on the Spark cluster, using a cloud hosted file system such as HDFS or S3.
+
+    The data is read from the event log file, and used to create the users and time dimension tables,
+    as well as the songplays fact table.
+
+    The tables are then written back to cloud storage using a columnar Parquet file format,
+    optionally with appropriate partitioning.
+
+    Args:
+       spark (SparkSession): a Spark session object connected to to the Spark cluster master node.
+       input_data (string): URL for input data, references cloud storage such as HDFS or S3.
+       output_data (string): URL for output data, references cloud storage such as HDFS or S3.
+
+    """
+
     # get filepath to log data file
     log_data = input_data + 'log_data/*/*/*-events.json'
 
@@ -113,9 +143,9 @@ def process_log_data(spark, input_data, output_data):
     artist_df = spark.read.parquet(output_data + 'dimensions.parquet/artists')
 
     # create SQL table views over the song and artist data frames
-    song_df.registerTempTable("song")
-    artist_df.registerTempTable("artist")
-    df.registerTempTable("events")
+    song_df.createOrReplaceTempView("song")
+    artist_df.createOrReplaceTempView("artist")
+    df.createOrReplaceTempView("events")
 
     # extract columns from joined song and log datasets to create songplays table
     songplays_table = spark.sql('''

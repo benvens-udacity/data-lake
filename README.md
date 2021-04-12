@@ -44,6 +44,13 @@ The database schema reflect that used in previous projects, with fact and dimens
 
 The ETL pipeline is implemented in a single Python script, which is deployed onto the EMR cluster where it is run.
 
+To run the ETL pipeline on the Spark cluster, follow these steps:
+
+1. `ssh` onto the master node (first you must enable [inbound traffic](https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-connect-ssh-prereqs.html) onto the cluster)
+2. copy the ETL script from the S3 bucket into the home directory: `aws s3 cp s3://data-lake-cluster/scripts/etl.py .`
+3. export the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` values as environment variables
+4. run the ETL script: `spark-submit --master yarn ./etl.py `
+
 ## Diagnosing errors
 
 Spark errors are hard to diagnose. Here are a few possibilities:

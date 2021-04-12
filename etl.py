@@ -1,15 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, col
 
-# config = configparser.ConfigParser()
-# config.read('dl.cfg')
-#
-# os.environ['AWS_ACCESS_KEY_ID'] = config['AWS_ACCESS_KEY_ID']
-# os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS_SECRET_ACCESS_KEY']
-
 
 def create_spark_session() -> SparkSession:
     """Create a Spark session, compatible with the AWS Elastic Map Reduce (EMR) service.
+
+    The following two enviroment variables must be set appropriately in the shell environment
+    in which you will issue the spark-submit command against this script:
+
+        AWS_ACCESS_KEY_ID
+        AWS_SECRET_ACCESS_KEY
 
     Returns:
         a Spark session object, which connects the driver to the EMR cluster's master instance.
